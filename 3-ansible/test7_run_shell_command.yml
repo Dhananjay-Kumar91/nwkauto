@@ -1,0 +1,9 @@
+---
+- name: run shell
+  hosts: lab
+  gather_facts: fales
+
+  tasks:
+  - name: "shell"
+    shell: /home/vagrant/somescript.sh >> log.txt
+    sudo: yes

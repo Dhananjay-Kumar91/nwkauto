@@ -1,0 +1,71 @@
+Ansible特點：
+（1） No agents：不需要在被管控主机上安装任意客户端；
+（2） No server：无服务器端，使用时直接运行命令即可；
+（3） Modules in any languages：基于模块工作，可使用任意语言开发模块
+（4） YAML，not code：使用yaml语言定制剧本playbook；
+（5） SSH by default：基于SSH工作；
+（6） Strong multi-tier solution：可实现多级指挥；
+
+
+Ansible基礎命令：
+    ansible <host-pattern> [-f forks] [-m module_name] [-a args]
+
+        host-pattern # 可以是all，或者配置文件中的主机组名
+        -f forks  # 指定并行处理的进程数，用於有多台服务器想并发运行，默认是并发5
+        -m module # 指定使用的模块，默认模块为command
+        -a args   # 指定模块的参数
+
+    ansible-doc [options] [modules] # 查看各模塊和使用方法
+        -l 列出所有的ansible模块
+        -s 列出该模块的相关指令
+
+
+常用的模块：copy、command、service、yum、apt、file、raw、shell、script、cron、user、state、template
+    例如：
+    ansible -i /etc/ansiblehosts all -m ‘service‘ -a ‘name=httpd state=stoped‘
+    ansible -m yum -a ‘name=gcc state=present‘
+    ansible all -a "/bin/echo hello"					# 若不指定-m，默认模块是shell
+    ansible all -m command -a "/bin/echo hello, world"
+    ansible all -m shell -a "ping baidu.com -c 1"
+    ansible all -m ping							# ping操作，-i参数可不指定，默认使用/etc/ansible/hosts
+    ansible "web servers" -a ‘date‘ (可省略-m command)			# 执行date命令
+    ansible "db servers" -m copy -a “src=/root/ansible.rpm dest=/tmp/”	# 复制文件
+    ansible all -m cron -a ‘name="custom job" minute=*/3 hour=* day=* month=* weekday=* job="/usr/sbin/ntpdate 192.168.200.16"’	# 配置crontab任务
+    ansible all -m group -a "name=mysql gid=36 system=yes" 		# 增加组和用户
+    ansible corosync -m yum -a "name=httpd state=present"			# 通过yum安装httpd
+    ansible all -m service -a "name=httpd state=started enabled=yes"	# 配置服务开启启动
+        yum：用来安装软件
+        service：用来对服务的开关操作
+        shell：可以用来执行命令以及脚本
+        raw：和command、shell类似，但是它可以传递管道
+
+
+设置主机组（host-pattern）：
+    所有的hosts都需要在hosts文件中被定義，並可以分組，這個文件是可以自定義的
+    $ vim ~/hosts
+        [web servers]
+        192.168.200.211
+        192.168.200.212
+        192.168.200.213
+        192.168.200.214
+
+        [db servers]
+        192.168.200.215
+        192.168.200.216
+    $ ansible -i ~/hosts all -a 'who’（顯示出現有主機信息）
+
+
+创建SSH公钥与私钥：
+    $ ssh-keygen
+
+
+将公钥文件复制到目标服务器 [注: ssh-copy-id 把公钥追加到远程主机的 .ssh/authorized_key 上]：
+    $ ssh-copy-id root@192.168.200.211
+    $ ssh-copy-id root@192.168.200.212
+    $ ssh-copy-id root@192.168.200.213
+
+
+连接与验证测试：
+    $ ansible -i ~/hosts all -m ping
+    $ ansible -i ~/hosts all -m setup（顯示出現有主機的setup配置）
+

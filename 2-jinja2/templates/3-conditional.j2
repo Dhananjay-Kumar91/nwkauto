@@ -1,0 +1,7 @@
+{% for vendor in config -%}
+    {% if vendor == 'Cisco' -%}
+        Big Teal
+    {% else -%}
+        {{ vendor }}
+    {% endif -%}
+{% endfor %}

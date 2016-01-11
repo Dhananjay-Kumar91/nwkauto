@@ -1,0 +1,27 @@
+---
+- name: use template
+  hosts: lab
+  gather_facts: fales
+  sudo: yes
+
+  vars:
+  - new_file1: "new1.yml"
+  - new_file2: "new2.yml"
+  - new_user: "enigma"
+
+  tasks:
+  - name: template1
+    template:
+      src=test1_sudo.yml
+      dest=/home/vagrant/{{ new_file1 }}
+      owner=vagrant # change the file properties
+      group=vagrant
+      mode=777
+  - name: template2
+    template:
+      src=test2_create_new_user.yml
+      dest=/home/vagrant/{{ new_file2 }}
+
+# the COPY and TEMPLATE are almost same: they all copy a file on local box to a remote location.
+# But if you need variable interpolation in copied files, use the TEMPLATE module.
+# Also, with TEMPLATE, the properties of the file can be changed, such as owner, group, mode

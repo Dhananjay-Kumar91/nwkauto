@@ -1,0 +1,13 @@
+# CONNECT TO LINUX VM #
+
+1. install vagrant
+2. under the linux root directory, run "vagrant up"
+3. run "ssh-copy-id -i ~/.ssh/id_rsa vagrant@127.0.0.1 -p 2222" to upload SSH key
+4. the password is "vagrant"
+
+After that the VM is trustable
+1. run "vagrant ssh-config" to check the SSH connection configuration
+2. run "ssh vagrant@127.0.0.1 -p [port number]” to connect to the VM
+
+Run the Ansiable Playbook:
+1. run "ansible-playbook -i hosts sampleplaybook.yml"

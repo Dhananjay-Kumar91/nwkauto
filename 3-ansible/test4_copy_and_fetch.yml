@@ -1,0 +1,19 @@
+---
+- name: copy and fetch files
+  hosts: lab
+  gather_facts: fales
+  sudo: yes
+
+  vars:
+  - new_file1: "new1.yml"
+  - new_file2: "from_remote_folder"
+
+  tasks:
+  - name: copy files
+    copy: 
+      src=test1_sudo.yml
+      dest=/home/vagrant/{{ new_file1 }} # copy local file to remote host
+  - name: fetch files
+    fetch: 
+      src=/home/vagrant/{{ new_file1 }}
+      dest={{ new_file2 }} # copy remote file to local folder

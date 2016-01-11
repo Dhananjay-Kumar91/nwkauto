@@ -1,0 +1,8 @@
+---
+- name: run command
+  hosts: lab
+  gather_facts: fales
+
+  tasks:
+  - name: "cmd"
+    action: command touch ~/test

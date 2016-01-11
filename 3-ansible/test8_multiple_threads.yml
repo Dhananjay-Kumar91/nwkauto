@@ -1,0 +1,11 @@
+---
+- name: create user
+  hosts: lab
+  gather_facts: fales
+  vars:
+  - user: "enigma"
+
+  tasks:
+  - name: create {{ user }}
+    user: name="{{ user }}"
+    sudo: yes

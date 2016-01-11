@@ -1,0 +1,72 @@
+在範例 ./3-ansible/linux/ 下，有另一個劇本："config_router_roles.yml"，是一個關於roles的範例：
+    ---
+    - name: Configure Trustybox
+      hosts: tt
+      sudo: yes
+      gather_facts: yes
+      roles:
+        - router
+        - quagga
+
+
+這個劇本令目標host以router和quagga角色運作。在linux/目錄下有角色文件夾[roles]，其中包含了很多劇本
+模板，以router角色為例（每個角色下都有四個最基本的目錄：handlers，tasks，templates和vars）：
+    .../linux/roles/ 
+                    --- router/ 
+                                --- handlers/main.yml
+                                --- tasks/main.yml
+                                --- templates/sysctl.conf.j2
+                                --- vars/Debian.yml
+
+
+###### router/tasks/main.yml：######
+    ---
+      - include_vars: "{{ansible_os_family}}.yml"
+      - name: Main routing config File
+        template: src={{ conftemplate }} dest={{ conffile }}
+        notify: Apply sysctl changes
+
+    1. 使用Ansible系統變量（目前使用的VM是Debian），故此時"ansible_os_family"等同於"Debian"（即
+       為Debian.yml），使用"include_vars"導入router/vars/文件夾下的Debian.yml
+    2. 由於Debian.yml已定義變量"conftemplate"和"conffile"，所以直接引用
+    3. "notify"非常有用，通常用於配置變更，調用handler。notify一般定義于tasks的末尾，且僅在tasks
+       產生變更（任何操作，譬如執行命令，複製文件）時才會被觸發，運行被調用的handler。注意：若tasks
+       存在多個notify，則只有第一個notify會被觸發，切notify不會調用已被include的文件中的handler
+    4. tasks沒有產生變動時，notify不會被觸發（譬如複製文件，若文件已存在，則tasks不會產生變更）
+
+
+###### router/handlers/main.yml：######
+    ---
+      - name: Apply sysctl changes
+        shell: sudo sysctl -p {{ conffile }}
+
+    1. 當task產生變動，handler在notify中被調用，執行對應的操作
+    2. 注意handler的"name"，需要和notify中的調用名一致
+
+
+###### router/vars/Debian.yml：######
+    ---
+    conftemplate: 'roles/router/templates/sysctl.conf.j2'
+    conffile: '/etc/sysctl.conf'
+    testvar: 'Hello World'
+
+    1. 這裡定義了一些變量
+
+
+###### router/templates/sysctl.conf.j2：######
+    # Just for fun
+    # {{ testvar }}
+
+    # Uncomment the next line to enable packet forwarding for IPv4
+    net.ipv4.ip_forward=1
+
+    # Uncomment the next line to enable packet forwarding for IPv6
+    net.ipv6.conf.all.forwarding=1
+
+
+
+
+
+
+
+

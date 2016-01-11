@@ -1,0 +1,299 @@
+Ansible playbook（剧本）：
+    Ansible playbook的使用命令：
+        ansible-playbook test.yaml
+
+    一般運行命令：
+        ansible-playbook -i hosts sampleplaybook.yml
+
+    playbook是由一个或多个“play”组成的列表。play的主要功能在于将事先归并为一组的主机装扮成事先
+    通过ansible中的task定义好的角色。从根本上来讲，所谓task无非是调用ansible的一个module。将
+    多个play组织在一个playbook中，即可以让它们联同起来按事先编排的机制運作
+
+
+[官網YAML的例子]：
+  - hosts: webservers             ## 你选择的主机
+    vars:                         ## 变量
+      http_port: 80
+      max_clients: 200
+
+    remote_user: root             ## 用於連接/usr/bin/ansible-playbook的用戶名，若沒有定義則默認使用當前用戶名
+
+    tasks:                        ## 使用yum模塊來運作task
+    - name: ensure apache is at the latest version
+      yum: pkg=httpd state=latest
+    - name: write the apache config file
+      template: src=/srv/httpd.j2 dest=/etc/httpd.conf
+
+      notify:                     ## 触发重启服务器
+      - restart apache
+    - name: ensure apache is running
+      service: name=httpd state=started
+
+    handlers:                     ## 这里的restart apache 和上面的触发是配对的。这就是handlers的作用。相当于tag
+      - name: restart apache
+        service: name=httpd state=restarted
+
+[host和user]：
+    host：指定執行任務的遠程主機
+    remote_user：指定遠程主機上執行任務的用戶，也可在tasks中單獨指定用戶，例如：
+        - hosts: webnodes
+          remote_user: root
+          tasks:
+          - name: test connection
+            ping:
+            remote_user: enigma
+            sudo: yes
+
+[tasks]：
+    定義tasks任務時可以使用[action: module options]或[module: options]，推介使用後者實現向後兼容（參考範例6）
+    ignore_errors: 用於忽略錯誤，參數為true/false
+
+[handlers]:
+    用於當關注的資源產生變化時採取的一系列操作。"notify"這個action可用在每個play的最後被觸發，这样
+    可以避免多次有改变发生时每次都执行指定的操作，取而代之，仅在所有的变化发生完成后一次性地执行指定操
+    作。在notify中列出的操作称为handler，也即notify中调用handler中定义的操作。handlers的語言結構
+    和tasks完全一樣：（參考範例9）
+    handlers:
+    - name: template configuration file
+      template: src=template.j2 dest=/etc/foo.conf
+      notify:
+      - restart memcached
+      - restart apache
+
+######################################################################################
+[範例1（sudo）]：（以下所有範例的.yml文件都在linux目錄下）
+---
+- name: test sudo
+  hosts: tt
+  gather_facts: fales
+  remote_user: vagrant
+
+  tasks:
+  - service: name=nginx state=started
+    sudo: yes
+
+
+[範例2]：
+---
+- name: create user
+  hosts: tt
+  gather_facts: fales
+  remote_user: vagrant
+
+  vars:
+  - new_user: "enigma"            ## 為變量"new_user"賦值為“enigma
+
+  tasks:
+  - name: create {{ new_user }}   ## 使用變量"user"（使用jinja2語法 "{{ .. }}" ），即task名為"create enigma"，TASK: [create enigma]
+    user:
+      name="{{ new_user }}"
+      password="12345678"
+    sudo: yes
+
+
+[範例3（多task調用）]：
+---
+- name: multiple tasks
+  hosts: tt
+  gather_facts: fales
+  remote_user: vagrant
+
+  vars:
+  - new_user: "enigma"
+
+  tasks:
+  - name: create {{ new_user }}
+    user:
+      name="{{ new_user }}"
+      password="qwerasdf"
+    sudo: yes
+  - name: start service
+    service:                      ## 啟動service
+      name=nginx
+      state=started
+    sudo: yes
+
+
+[範例4（傳送文件）]：
+---
+- name: copy and fetch files
+  hosts: tt
+  gather_facts: fales
+  sudo: yes
+  remote_user: vagrant
+
+  vars:
+  - new_file1: "new1.yml"
+  - new_file2: "from_remote_folder"
+
+  tasks:
+  - name: copy files
+    copy: 
+      src=test1_sudo.yml
+      dest=/home/vagrant/{{ new_file1 }}  # copy local file to remote host
+  - name: fetch files
+    fetch: 
+      src=/home/vagrant/{{ new_file1 }}
+      dest={{ new_file2 }}                # copy remote file to local folder
+
+
+[範例5（模板）]：
+---
+- name: use template
+  hosts: tt
+  gather_facts: fales
+  sudo: yes
+  remote_user: vagrant
+
+  vars:
+  - new_file1: "new1.yml"
+  - new_file2: "new2.yml"
+  - new_user: "enigma"
+
+  tasks:
+  - name: template1
+    template:
+      src=test1_sudo.yml
+      dest=/home/vagrant/{{ new_file1 }}
+      owner=vagrant               # change the file properties
+      group=vagrant
+      mode=777
+  - name: template2
+    template:
+      src=test2_create_new_user.yml
+      dest=/home/vagrant/{{ new_file2 }}
+
+# the COPY and TEMPLATE are almost same: they all copy a file on local box to a remote location.
+# But if you need variable interpolation in copied files, use the TEMPLATE module.
+# Also, with TEMPLATE, the properties of the file can be changed, such as owner, group, mode
+
+
+[範例6（执行命令）]：
+---
+- name: run command
+  hosts: tt
+  gather_facts: fales
+  remote_user: vagrant
+
+  tasks:
+  - name: run cmd1
+    action: command touch ~/test1        ## 執行動作，調用command模塊，執行touch命令
+  - name: run cmd2
+    command: touch ~/test2               ## 直接調用command模塊，執行touch命令，推介此方法
+
+
+[範例7（執行shell腳本或命令）]：
+---
+- name: run shell
+  hosts: tt
+  gather_facts: fales
+  remote_user: vagrant
+  sudo: yes
+
+  tasks:
+  - name: run it
+    shell: /home/vagrant/somescript.sh >> log.txt
+    sudo: yes
+
+
+[範例8（併發線程）]：
+ansible-playbook user.yml -f 10
+
+
+[範例9（handles）]：
+---
+- name: run shell
+  hosts: tt
+  gather_facts: fales
+  remote_user: vagrant
+  sudo: yes
+
+  tasks:
+  - name: run it
+    shell: /home/vagrant/somescript.sh >> log.txt
+    sudo: yes
+  handlers:
+  - name: template configuration file
+    template: src=template.j2 dest=/etc/foo.conf
+    notify:
+    - restart memcached
+    - restart apache
+
+
+[真實案例1]：
+---
+- hosts: hbhosts
+  remote_user: root
+  tasks:
+  - name: ensure heartbeat latest version
+    yum: name=heartbeat state=present
+  - name: authkeys configure file
+    copy: src=/root/hb_conf/authkeys dest=/etc/ha.d/authkeys
+  - name: authkeys mode 600
+    file: path=/etc/ha.d/authkeys mode=600
+    notify:
+    - restart heartbeat
+  - name: ha.cf configure file
+    copy: src=/root/hb_conf/ha.cf dest=/etc/ha.d/ha.cf
+    notify:
+  - restart heartbeat
+  handlers:
+  - name: restart heartbeat
+    service: name=heartbeat state=restarted
+
+
+[真實案例2]：
+---
+- hosts: hanodes      #指定要执行任务的主机，可由冒号分隔主机组
+  remote_user: root   #指定远程主机上执行任务的用户
+  vars:  #定义如下2个变量
+    crmsh: crmsh-1.2.6.4.el6.x86_64.rpm
+    pssh: pssh-2.3.1-2.el6.x86_64.rpm
+  tasks:    #指定需执行的任务列表，每个task都有其name和使用的模块及参数
+    - name: test connection
+      ping:        #ping模块无需执行参数
+      remote_user: jason  #在task中指定远程主机上执行任务的用户
+      sudo: yes   #使用sudo在远程主机上执行任务
+    - name: corosync installing
+      yum: name=corosync state=present
+    - name: pacemaker installing          #定义一个软件安装任务
+      yum: name=pacemaker state=present   #使用yum安装，并配置需安装的软件名（name），及状态（state）
+    - name: crmsh rpm packages
+      copy: src=/ansible/corosync/packages/{{ crmsh }} dest=/tmp/{{ crmsh }}
+    - name: pssh rpm packages
+      copy: src=/ansible/corosync/packages/{{ pssh }} dest=/tmp/{{ pssh }}
+    - name: crmsh installing
+      command: yum -y reinstall /tmp/{{ crmsh }} /tmp/{{ pssh }}
+    - name: authkey configure file
+      copy: src=/ansible/corosync/conf/authkey dest=/etc/corosync/authkey
+    - name: authkey mode 400   #定义一个文件权限设置任务
+      file: path=/etc/corosync/authkey mode=400
+      notify:   #定义一个通知，当此任务执行时，可以激发响应的handler
+        - restart corosync
+    - name: corosync.conf configure file
+      copy: src=/ansible/corosync/conf/corosync.conf dest=/etc/corosync/corosync.conf
+      tags:
+        - conf
+      notify:
+        - restart corosync
+    - name: ensure the corosync service startup on boot
+      service: name=corosync state=started enabled=yes
+  handlers:   #定义当关注的资源发生变化时，需采取的操作
+    - name: restart corosync  #定义一个服务重启任务
+      service: name=corosync state=restarted
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
