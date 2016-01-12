@@ -1,0 +1,16 @@
+---
+switches:
+  - hostname: pynet-sw1
+    secret: <secret>
+    ip_addr: 10.10.10.20
+    default_gateway: 10.10.10.1
+    access_vlan: 10
+    snmp_community: <community>
+    SNMPv3: true
+  - hostname: pynet-sw2
+    secret: <secret>
+    ip_addr: 10.10.20.20
+    default_gateway: 10.10.20.1
+    access_vlan: 20
+    snmp_community: <community>
+    SNMPv3: false

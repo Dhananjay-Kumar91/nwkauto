@@ -1,0 +1,10 @@
+---
+- name: Generate conf file
+  template: src=cisco_access_switch_cfg_in_jinja2.j2 dest=~/ENGIGMAS_MACBOOK/Network_Automation/{{ item.hostname }}.txt
+  with_items: switches
+
+# "with_items" actually is a "for" loop, it will only check the part which includes
+# keyword "switches" in the valriables files (vars/main.yml)
+
+# This file will generate the text configuration files for different seitches
+# according to the hostname

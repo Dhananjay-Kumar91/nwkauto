@@ -1,0 +1,5 @@
+---
+- name: Generate conf file
+  hosts: local
+  roles:
+    - access_switch
